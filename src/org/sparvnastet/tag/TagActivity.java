@@ -146,11 +146,33 @@ public class TagActivity extends Activity {
             return;
         }
 
-        readTag(mifareTag);
-        writeTag(mifareTag);
+        byte[] data = readTag(mifareTag);
+        if (isAllZero(data)) {
+            // Clean tag, write to it
+
+            // TODO: modify data in some meaningful way
+            for (int i = 0; i < data.length; i += 2) {
+                data[i] = 0x13;
+                data[i + 1] = 0x37;
+            }
+
+            writeTag(mifareTag, data);
+        } else {
+            // Occupied tag, parse data.
+            // TODO: Show data
+        }
     }
 
-    public void readTag(MifareClassic tag) {
+    private boolean isAllZero(byte[] data) {
+        for (byte b : data)
+            if (b != 0)
+                return false;
+        return true;
+    }
+
+    private static final int firstSector = 13;
+
+    public byte[] readTag(MifareClassic tag) {
         // 3 Sectors with 3 blocks with 16 bytes.
 
         byte[] rawData = new byte[3 * 3 * 16];
@@ -162,9 +184,8 @@ public class TagActivity extends Activity {
             int sectorCount = tag.getSectorCount();
             if (sectorCount < 16) {
                 Log.i("TAG", "Too few sectors");
-                return;
+                return null;
             }
-            int firstSector = 13;
             for (int s = firstSector; s < 16; ++s) {
                 for (int b = 0; b < 3; ++b) {
 
@@ -185,9 +206,43 @@ public class TagActivity extends Activity {
         } catch (IOException e) {
             Log.e("TAG", "NFC Read IOException");
         }
+
+        return rawData;
     }
 
-    public void writeTag(MifareClassic tag) {
+    public void writeTag(MifareClassic tag, byte[] data) {
+        try {
+            Log.i("TAG", "NFC Write Start");
 
+            tag.connect();
+
+            int sectorCount = tag.getSectorCount();
+            if (sectorCount < 16) {
+                Log.i("TAG", "Too few sectors");
+                return;
+            }
+
+            byte[] blockBuffer = new byte[16];
+
+            for (int s = firstSector; s < 16; ++s) {
+                for (int b = 0; b < 3; ++b) {
+
+                    tag.authenticateSectorWithKeyB(s, B_KEYS[s]);
+                    int blockIndex = s * 4 + b;
+
+                    for (int i = 0; i < 16; ++i)
+                        blockBuffer[i] = data[((s - firstSector) * 3 + b) * 16 + i];
+
+                    tag.writeBlock(blockIndex, blockBuffer);
+                }
+            }
+
+            tag.close();
+
+            Log.i("TAG", "NFC Write Success");
+
+        } catch (IOException e) {
+            Log.e("TAG", "NFC Write IOException");
+        }
     }
 }
