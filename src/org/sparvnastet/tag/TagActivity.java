@@ -19,6 +19,7 @@
 
 package org.sparvnastet.tag;
 
+import java.io.IOException;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Intent;
@@ -150,7 +151,40 @@ public class TagActivity extends Activity {
     }
 
     public void readTag(MifareClassic tag) {
+        // 3 Sectors with 3 blocks with 16 bytes.
 
+        byte[] rawData = new byte[3 * 3 * 16];
+        try {
+            Log.i("TAG", "NFC Read Start");
+
+            tag.connect();
+
+            int sectorCount = tag.getSectorCount();
+            if (sectorCount < 16) {
+                Log.i("TAG", "Too few sectors");
+                return;
+            }
+            int firstSector = 13;
+            for (int s = firstSector; s < 16; ++s) {
+                for (int b = 0; b < 3; ++b) {
+
+                    tag.authenticateSectorWithKeyA(s, A_KEYS[s]);
+                    int blockIndex = s * 4 + b;
+                    byte[] block = tag.readBlock(blockIndex);
+
+                    for (int i = 0; i < 16; ++i)
+                        rawData[((s - firstSector) * 3 + b) * 16 + i] = block[i];
+
+                }
+            }
+
+            tag.close();
+
+            Log.i("TAG", "NFC Read Success");
+
+        } catch (IOException e) {
+            Log.e("TAG", "NFC Read IOException");
+        }
     }
 
     public void writeTag(MifareClassic tag) {
