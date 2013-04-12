@@ -63,6 +63,9 @@ public class DrawingView extends View {
 
         for (int i = 0; i < data.length; ++i)
             data[i] = newData[i];
+
+        // Force redraw
+        invalidate();
     }
 
     public boolean onTouchEvent(MotionEvent event) {

@@ -28,13 +28,6 @@ along with TAG.  If not, see <http://www.gnu.org/licenses/>.
         android:layout_height="wrap_content"
         android:text="@string/my_tag_label" />
 
-    <EditText
-        android:id="@+id/myTagEditText"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:maxLength="128"
-        android:text="@string/my_default_tag" />
-
     <org.sparvnastet.tag.DrawingView
         android:id="@+id/drawingView"
         android:layout_width="match_parent"

@@ -20,8 +20,7 @@
 package org.sparvnastet.tag;
 
 import java.io.IOException;
-
-import org.apache.http.util.EncodingUtils;
+import java.util.Arrays;
 
 import android.app.Activity;
 import android.app.PendingIntent;
@@ -34,7 +33,6 @@ import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.Log;
 import android.view.Menu;
-import android.widget.EditText;
 import android.widget.Toast;
 
 public class TagActivity extends Activity {
@@ -80,15 +78,12 @@ public class TagActivity extends Activity {
     private IntentFilter[] mFilters;
     private String[][] mTechLists;
 
-    private EditText mTextBoxTag;
     private DrawingView mDrawingView;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.tag_layout);
-
-        mTextBoxTag = (EditText) findViewById(R.id.myTagEditText);
 
         mDrawingView = (DrawingView) findViewById(R.id.drawingView);
 
@@ -153,8 +148,15 @@ public class TagActivity extends Activity {
 
     private void tagDetected(Tag tag) {
 
-        final int TEXT_CONTENT_TAG = 1;
-        // Text Content data format: [TYPE 1][DATA 142][ZERO 1]
+        final int GFX_CONTENT_TAG = 2;
+        
+        final int fgOffset = 1;
+        final int colLen = 3;
+        final int bgOffset = 4;
+        final int gfxOffset = 7;
+        final int gfxLen = 128;
+        
+        // Gfx content data format: [TYPE 1][FG 3][BG 3][GFX 128]
 
         MifareClassic mifareTag = MifareClassic.get(tag);
         if (mifareTag == null) {
@@ -166,43 +168,42 @@ public class TagActivity extends Activity {
         if (!isAllZero(data)) {
             // Occupied tag, parse data.
 
-            if (data[0] != TEXT_CONTENT_TAG) {
+            if (data[0] != GFX_CONTENT_TAG) {
                 Toast.makeText(this, "Unrecognized content type", Toast.LENGTH_LONG).show();
                 return;
             }
 
-            int len = 0;
-            for (int i = 1; i < data.length; ++i) {
-                if (data[i] == 0) {
-                    len = i;
-                    break;
-                }
-            }
-
-            String msg = EncodingUtils.getString(data, 1, len, "ISO-8859-1");
-            Log.i("TAG", msg);
-            Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+            byte[] gfx = Arrays.copyOfRange(data, gfxOffset, gfxOffset + gfxLen);
+            mDrawingView.setData(gfx);
+            
+            Toast.makeText(this, "Tag Read", Toast.LENGTH_SHORT).show();
         }
 
         if (isAllZero(data)) {
             // Clean tag, write to it
 
-            String msg = mTextBoxTag.getText().toString();
+            // Zero all data
+            Arrays.fill(data, (byte)0);
 
-            byte[] strdata = EncodingUtils.getBytes(msg, "ISO-8859-1");
-            if (strdata.length + 1 >= data.length) {
-                Toast.makeText(this, "Tag is too long", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            for (int i = 0; i < data.length; ++i)
-                data[i] = 0;
-
-            data[0] = TEXT_CONTENT_TAG;
-            for (int i = 0; i < strdata.length; ++i)
-                data[i + 1] = strdata[i];
-            data[strdata.length + 1] = 0;
-
+            // Data type constant
+            data[0] = GFX_CONTENT_TAG;
+            
+            // FG Color
+            data[1] = (byte)255;
+            data[2] = (byte)255;
+            data[3] = (byte)255;
+            
+            // BG Color
+            data[4] = (byte)0;
+            data[5] = (byte)0;
+            data[6] = (byte)0;
+            
+            // Pixels
+            byte[] gfxData = mDrawingView.getData();
+            for (int i = 0; i < gfxData.length; ++i)
+                data[i + gfxOffset] = gfxData[i];
+   
+            // NFC write
             writeTag(mifareTag, data);
 
             Toast.makeText(this, "Tagged!", Toast.LENGTH_SHORT).show();
