@@ -22,16 +22,17 @@ along with TAG.  If not, see <http://www.gnu.org/licenses/>.
     android:layout_height="fill_parent"
     android:orientation="vertical" >
 
-    <TextView
-        android:id="@+id/myTagTextView"
-        android:layout_width="wrap_content"
+    <Switch
+        android:id="@+id/writeSwitch"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/my_tag_label" />
+        android:layout_margin="5dp"
+        android:text="TAG Write Mode:" />
 
     <org.sparvnastet.tag.DrawingView
         android:id="@+id/drawingView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="fill_parent"
         android:layout_margin="5dp" />
 
 </LinearLayout>

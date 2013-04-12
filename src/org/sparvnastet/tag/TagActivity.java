@@ -33,6 +33,7 @@ import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.Log;
 import android.view.Menu;
+import android.widget.Switch;
 import android.widget.Toast;
 
 public class TagActivity extends Activity {
@@ -79,6 +80,7 @@ public class TagActivity extends Activity {
     private String[][] mTechLists;
 
     private DrawingView mDrawingView;
+    private Switch mWriteMode;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -86,6 +88,8 @@ public class TagActivity extends Activity {
         setContentView(R.layout.tag_layout);
 
         mDrawingView = (DrawingView) findViewById(R.id.drawingView);
+        mWriteMode = (Switch) findViewById(R.id.writeSwitch);
+        mWriteMode.setChecked(false);
 
         mAdapter = NfcAdapter.getDefaultAdapter(this);
 
@@ -144,18 +148,20 @@ public class TagActivity extends Activity {
 
             tagDetected((Tag) tags);
         }
+
+        setIntent(null);
     }
 
     private void tagDetected(Tag tag) {
 
         final int GFX_CONTENT_TAG = 2;
-        
+
         final int fgOffset = 1;
         final int colLen = 3;
         final int bgOffset = 4;
         final int gfxOffset = 7;
         final int gfxLen = 128;
-        
+
         // Gfx content data format: [TYPE 1][FG 3][BG 3][GFX 128]
 
         MifareClassic mifareTag = MifareClassic.get(tag);
@@ -165,7 +171,7 @@ public class TagActivity extends Activity {
         }
 
         byte[] data = readTag(mifareTag);
-        if (!isAllZero(data)) {
+        if (!mWriteMode.isChecked()) {
             // Occupied tag, parse data.
 
             if (data[0] != GFX_CONTENT_TAG) {
@@ -175,38 +181,41 @@ public class TagActivity extends Activity {
 
             byte[] gfx = Arrays.copyOfRange(data, gfxOffset, gfxOffset + gfxLen);
             mDrawingView.setData(gfx);
-            
+
             Toast.makeText(this, "Tag Read", Toast.LENGTH_SHORT).show();
+            return;
         }
 
         if (isAllZero(data)) {
             // Clean tag, write to it
 
             // Zero all data
-            Arrays.fill(data, (byte)0);
+            Arrays.fill(data, (byte) 0);
 
             // Data type constant
             data[0] = GFX_CONTENT_TAG;
-            
+
             // FG Color
-            data[1] = (byte)255;
-            data[2] = (byte)255;
-            data[3] = (byte)255;
-            
+            data[1] = (byte) 255;
+            data[2] = (byte) 255;
+            data[3] = (byte) 255;
+
             // BG Color
-            data[4] = (byte)0;
-            data[5] = (byte)0;
-            data[6] = (byte)0;
-            
+            data[4] = (byte) 0;
+            data[5] = (byte) 0;
+            data[6] = (byte) 0;
+
             // Pixels
             byte[] gfxData = mDrawingView.getData();
             for (int i = 0; i < gfxData.length; ++i)
                 data[i + gfxOffset] = gfxData[i];
-   
+
             // NFC write
             writeTag(mifareTag, data);
 
             Toast.makeText(this, "Tagged!", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "It's allready tagged...", Toast.LENGTH_SHORT).show();
         }
     }
 
