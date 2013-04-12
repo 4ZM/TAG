@@ -20,6 +20,9 @@
 package org.sparvnastet.tag;
 
 import java.io.IOException;
+
+import org.apache.http.util.EncodingUtils;
+
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Intent;
@@ -31,6 +34,8 @@ import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.Log;
 import android.view.Menu;
+import android.widget.EditText;
+import android.widget.Toast;
 
 public class TagActivity extends Activity {
 
@@ -75,10 +80,14 @@ public class TagActivity extends Activity {
     private IntentFilter[] mFilters;
     private String[][] mTechLists;
 
+    private EditText mTextBoxTag;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.tag_layout);
+
+        mTextBoxTag = (EditText) findViewById(R.id.myTagEditText);
 
         mAdapter = NfcAdapter.getDefaultAdapter(this);
 
@@ -140,6 +149,10 @@ public class TagActivity extends Activity {
     }
 
     private void tagDetected(Tag tag) {
+
+        final int TEXT_CONTENT_TAG = 1;
+        // Text Content data format: [TYPE 1][DATA 142][ZERO 1]
+
         MifareClassic mifareTag = MifareClassic.get(tag);
         if (mifareTag == null) {
             Log.i("TAG", "Unknown tag type found (not MifareClassic)");
@@ -147,19 +160,49 @@ public class TagActivity extends Activity {
         }
 
         byte[] data = readTag(mifareTag);
+        if (!isAllZero(data)) {
+            // Occupied tag, parse data.
+
+            if (data[0] != TEXT_CONTENT_TAG) {
+                Toast.makeText(this, "Unrecognized content type", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            int len = 0;
+            for (int i = 1; i < data.length; ++i) {
+                if (data[i] == 0) {
+                    len = i;
+                    break;
+                }
+            }
+
+            String msg = EncodingUtils.getString(data, 1, len, "ISO-8859-1");
+            Log.i("TAG", msg);
+            Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+        }
+
         if (isAllZero(data)) {
             // Clean tag, write to it
 
-            // TODO: modify data in some meaningful way
-            for (int i = 0; i < data.length; i += 2) {
-                data[i] = 0x13;
-                data[i + 1] = 0x37;
+            String msg = mTextBoxTag.getText().toString();
+
+            byte[] strdata = EncodingUtils.getBytes(msg, "ISO-8859-1");
+            if (strdata.length + 1 >= data.length) {
+                Toast.makeText(this, "Tag is too long", Toast.LENGTH_SHORT).show();
+                return;
             }
 
+            for (int i = 0; i < data.length; ++i)
+                data[i] = 0;
+
+            data[0] = TEXT_CONTENT_TAG;
+            for (int i = 0; i < strdata.length; ++i)
+                data[i + 1] = strdata[i];
+            data[strdata.length + 1] = 0;
+
             writeTag(mifareTag, data);
-        } else {
-            // Occupied tag, parse data.
-            // TODO: Show data
+
+            Toast.makeText(this, "Tagged!", Toast.LENGTH_SHORT).show();
         }
     }
 

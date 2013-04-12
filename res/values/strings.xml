@@ -3,6 +3,7 @@
 
     <string name="app_name">TAG</string>
     <string name="action_settings">Settings</string>
-    <string name="hello_world">Hello world!</string>
+    <string name="my_tag_label">My TAG:</string>
+    <string name="my_default_tag">planka.nu</string>
 
 </resources>
