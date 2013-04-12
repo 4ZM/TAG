@@ -81,6 +81,7 @@ public class TagActivity extends Activity {
     private String[][] mTechLists;
 
     private EditText mTextBoxTag;
+    private DrawingView mDrawingView;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -88,6 +89,8 @@ public class TagActivity extends Activity {
         setContentView(R.layout.tag_layout);
 
         mTextBoxTag = (EditText) findViewById(R.id.myTagEditText);
+
+        mDrawingView = (DrawingView) findViewById(R.id.drawingView);
 
         mAdapter = NfcAdapter.getDefaultAdapter(this);
 

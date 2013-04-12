@@ -35,4 +35,10 @@ along with TAG.  If not, see <http://www.gnu.org/licenses/>.
         android:maxLength="128"
         android:text="@string/my_default_tag" />
 
+    <org.sparvnastet.tag.DrawingView
+        android:id="@+id/drawingView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="5dp" />
+
 </LinearLayout>
