@@ -199,6 +199,11 @@ public class TagActivity extends Activity {
         if (!mWriteMode.isChecked()) {
             // Occupied tag, parse data.
 
+            if (isAllZero(data)) {
+                Toast.makeText(this, "Card is not tagged", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             if (data[0] != GFX_CONTENT_TAG) {
                 Toast.makeText(this, "Unrecognized content type", Toast.LENGTH_SHORT).show();
                 return;
@@ -236,7 +241,6 @@ public class TagActivity extends Activity {
         writeTag(mifareTag, data);
 
         Toast.makeText(this, "Tagged!", Toast.LENGTH_SHORT).show();
-
     }
 
     private boolean isAllZero(byte[] data) {
