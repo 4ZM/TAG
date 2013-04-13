@@ -345,7 +345,7 @@ public class TagActivity extends Activity {
             float delta = mAccelCurrent - mAccelLast;
             mAccel = mAccel * 0.9f + delta; // perform low-cut filter
 
-            if (mAccel > 15) {
+            if (mAccel > 11) {
                 byte[] data = new byte[128];
                 mDrawingView.setData(data);
                 Arrays.fill(data, (byte) 0);
