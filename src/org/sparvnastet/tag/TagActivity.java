@@ -26,6 +26,10 @@ import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.MifareClassic;
@@ -100,6 +104,14 @@ public class TagActivity extends Activity {
         mFilters = new IntentFilter[] { techFilter };
         mTechLists = new String[][] { new String[] { MifareClassic.class.getName() } };
 
+        // Setup accel for shake detection
+        mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        mSensorManager.registerListener(mSensorListener, mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
+                SensorManager.SENSOR_DELAY_NORMAL);
+        mAccel = 0.00f;
+        mAccelCurrent = SensorManager.GRAVITY_EARTH;
+        mAccelLast = SensorManager.GRAVITY_EARTH;
+
         Intent intent = getIntent();
         resolveIntent(intent);
     }
@@ -120,10 +132,14 @@ public class TagActivity extends Activity {
 
     @Override
     public void onPause() {
-        super.onPause();
         Log.i("TAG", "NFC: disableForegroundDispatch");
         if (mAdapter != null)
             mAdapter.disableForegroundDispatch(this);
+
+        if (mSensorManager != null)
+            mSensorManager.unregisterListener(mSensorListener);
+
+        super.onPause();
     }
 
     @Override
@@ -132,6 +148,10 @@ public class TagActivity extends Activity {
         Log.i("TAG", "NFC: enableForegroundDispatch");
         if (mAdapter != null)
             mAdapter.enableForegroundDispatch(this, mPendingIntent, mFilters, mTechLists);
+
+        if (mSensorManager != null)
+            mSensorManager.registerListener(mSensorListener,
+                    mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     void resolveIntent(Intent intent) {
@@ -302,4 +322,33 @@ public class TagActivity extends Activity {
             Log.e("TAG", "NFC Write IOException");
         }
     }
+
+    // Shake code from:
+    // http://stackoverflow.com/questions/2317428/android-i-want-to-shake-it
+    private SensorManager mSensorManager;
+    private float mAccel; // acceleration apart from gravity
+    private float mAccelCurrent; // current acceleration including gravity
+    private float mAccelLast; // last acceleration including gravity
+
+    private final SensorEventListener mSensorListener = new SensorEventListener() {
+
+        public void onSensorChanged(SensorEvent se) {
+            float x = se.values[0];
+            float y = se.values[1];
+            float z = se.values[2];
+            mAccelLast = mAccelCurrent;
+            mAccelCurrent = (float) Math.sqrt((double) (x * x + y * y + z * z));
+            float delta = mAccelCurrent - mAccelLast;
+            mAccel = mAccel * 0.9f + delta; // perform low-cut filter
+
+            if (mAccel > 15) {
+                byte[] data = new byte[128];
+                mDrawingView.setData(data);
+                Arrays.fill(data, (byte) 0);
+            }
+        }
+
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        }
+    };
 }
