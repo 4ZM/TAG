@@ -241,6 +241,7 @@ public class TagActivity extends Activity {
         writeTag(mifareTag, data);
 
         Toast.makeText(this, "Tagged!", Toast.LENGTH_SHORT).show();
+        mWriteMode.setChecked(false);
     }
 
     private boolean isAllZero(byte[] data) {
