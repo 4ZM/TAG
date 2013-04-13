@@ -171,11 +171,16 @@ public class TagActivity extends Activity {
         }
 
         byte[] data = readTag(mifareTag);
+        if (data == null) {
+            Toast.makeText(this, "Unrecognized card", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         if (!mWriteMode.isChecked()) {
             // Occupied tag, parse data.
 
             if (data[0] != GFX_CONTENT_TAG) {
-                Toast.makeText(this, "Unrecognized content type", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Unrecognized content type", Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -186,37 +191,32 @@ public class TagActivity extends Activity {
             return;
         }
 
-        if (isAllZero(data)) {
-            // Clean tag, write to it
+        // Zero all data
+        Arrays.fill(data, (byte) 0);
 
-            // Zero all data
-            Arrays.fill(data, (byte) 0);
+        // Data type constant
+        data[0] = GFX_CONTENT_TAG;
 
-            // Data type constant
-            data[0] = GFX_CONTENT_TAG;
+        // FG Color
+        data[1] = (byte) 255;
+        data[2] = (byte) 255;
+        data[3] = (byte) 255;
 
-            // FG Color
-            data[1] = (byte) 255;
-            data[2] = (byte) 255;
-            data[3] = (byte) 255;
+        // BG Color
+        data[4] = (byte) 0;
+        data[5] = (byte) 0;
+        data[6] = (byte) 0;
 
-            // BG Color
-            data[4] = (byte) 0;
-            data[5] = (byte) 0;
-            data[6] = (byte) 0;
+        // Pixels
+        byte[] gfxData = mDrawingView.getData();
+        for (int i = 0; i < gfxData.length; ++i)
+            data[i + gfxOffset] = gfxData[i];
 
-            // Pixels
-            byte[] gfxData = mDrawingView.getData();
-            for (int i = 0; i < gfxData.length; ++i)
-                data[i + gfxOffset] = gfxData[i];
+        // NFC write
+        writeTag(mifareTag, data);
 
-            // NFC write
-            writeTag(mifareTag, data);
+        Toast.makeText(this, "Tagged!", Toast.LENGTH_SHORT).show();
 
-            Toast.makeText(this, "Tagged!", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(this, "It's allready tagged...", Toast.LENGTH_SHORT).show();
-        }
     }
 
     private boolean isAllZero(byte[] data) {
@@ -261,6 +261,7 @@ public class TagActivity extends Activity {
 
         } catch (IOException e) {
             Log.e("TAG", "NFC Read IOException");
+            return null;
         }
 
         return rawData;
