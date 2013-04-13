@@ -46,10 +46,10 @@ public class DrawingView extends View {
         mGridPaint.setStyle(Paint.Style.STROKE);
         mGridPaint.setColor(Color.DKGRAY);
 
-        fgPaint.setStyle(Style.FILL);
+        fgPaint.setStyle(Style.FILL_AND_STROKE);
         fgPaint.setColor(Color.RED);
 
-        bgPaint.setStyle(Style.FILL);
+        bgPaint.setStyle(Style.FILL_AND_STROKE);
         bgPaint.setColor(Color.LTGRAY);
     }
 
