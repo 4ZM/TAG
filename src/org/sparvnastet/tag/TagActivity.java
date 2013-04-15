@@ -78,6 +78,11 @@ public class TagActivity extends Activity {
             { (byte) 0x5c, (byte) 0x59, (byte) 0x8c, (byte) 0x9c, (byte) 0x58, (byte) 0xb5 },
             { (byte) 0x5c, (byte) 0x59, (byte) 0x8c, (byte) 0x9c, (byte) 0x58, (byte) 0xb5 }, };
 
+    final static byte[] cookie = new byte[] { 0x02, (byte) 0xff, (byte) 0xff, (byte) 0xff, 0x00, 0x00, 0x00 };
+    final static int cookieOffset = 0;
+    final static int gfxOffset = 7;
+    final static int gfxLen = 128;
+
     private NfcAdapter mAdapter;
     private PendingIntent mPendingIntent;
     private IntentFilter[] mFilters;
@@ -174,65 +179,56 @@ public class TagActivity extends Activity {
 
     private void tagDetected(Tag tag) {
 
-        final int GFX_CONTENT_TAG = 2;
-
-        final int fgOffset = 1;
-        final int colLen = 3;
-        final int bgOffset = 4;
-        final int gfxOffset = 7;
-        final int gfxLen = 128;
-
-        // Gfx content data format: [TYPE 1][FG 3][BG 3][GFX 128]
-
+        // MAGIC COOKIE: 02 FF FF FF 00 00 00
+        // Content format: [MAGIC COOKIE 7][GFX 128] = 135
         MifareClassic mifareTag = MifareClassic.get(tag);
         if (mifareTag == null) {
             Log.i("TAG", "Unknown tag type found (not MifareClassic)");
             return;
         }
 
+        // Read the tag
         byte[] data = readTag(mifareTag);
         if (data == null) {
-            Toast.makeText(this, "Unrecognized card", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Unrecognized Card", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        // Sanity check. Bail out if it contains data but no cookie
+        if (!isSpaceUnused(data) && !isCookiePresent(data)) {
+            Toast.makeText(this, "Card doesn't have any unused space.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Read mode, process
         if (!mWriteMode.isChecked()) {
-            // Occupied tag, parse data.
+            processRead(data);
+        } else {
+            processWrite(mifareTag, data);
+        }
+    }
 
-            if (isAllZero(data)) {
-                Toast.makeText(this, "Card is not tagged", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            if (data[0] != GFX_CONTENT_TAG) {
-                Toast.makeText(this, "Unrecognized content type", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            byte[] gfx = Arrays.copyOfRange(data, gfxOffset, gfxOffset + gfxLen);
-            mDrawingView.setData(gfx);
-
-            Toast.makeText(this, "Tag Read", Toast.LENGTH_SHORT).show();
+    private void processRead(byte[] data) {
+        if (isSpaceUnused(data)) {
+            Toast.makeText(this, "Card is not tagged.", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        byte[] gfx = Arrays.copyOfRange(data, gfxOffset, gfxOffset + gfxLen);
+        mDrawingView.setData(gfx);
+
+        Toast.makeText(this, "Tag Read!", Toast.LENGTH_SHORT).show();
+    }
+
+    private void processWrite(MifareClassic mifareTag, byte[] data) {
         // Zero all data
         Arrays.fill(data, (byte) 0);
 
-        // Data type constant
-        data[0] = GFX_CONTENT_TAG;
+        // Write magic cookie
+        for (int i = 0; i < cookie.length; ++i)
+            data[i] = cookie[i];
 
-        // FG Color
-        data[1] = (byte) 255;
-        data[2] = (byte) 255;
-        data[3] = (byte) 255;
-
-        // BG Color
-        data[4] = (byte) 0;
-        data[5] = (byte) 0;
-        data[6] = (byte) 0;
-
-        // Pixels
+        // Write Pixels
         byte[] gfxData = mDrawingView.getData();
         for (int i = 0; i < gfxData.length; ++i)
             data[i + gfxOffset] = gfxData[i];
@@ -244,9 +240,25 @@ public class TagActivity extends Activity {
         mWriteMode.setChecked(false);
     }
 
-    private boolean isAllZero(byte[] data) {
+    private boolean isSpaceUnused(byte[] data) {
+        return isAllX(data, (byte) 0) || isAllX(data, (byte) 0xff);
+    }
+
+    private boolean isCookiePresent(byte[] data) {
+        if (data == null || data.length < cookie.length)
+            return false;
+
+        for (int i = 0; i < cookie.length; ++i) {
+            if (data[i] != cookie[i])
+                return false;
+        }
+
+        return true;
+    }
+
+    private boolean isAllX(byte[] data, byte x) {
         for (byte b : data)
-            if (b != 0)
+            if (b != x)
                 return false;
         return true;
     }
@@ -349,7 +361,6 @@ public class TagActivity extends Activity {
             if (mAccel > 11) {
                 byte[] data = new byte[128];
                 mDrawingView.setData(data);
-                Arrays.fill(data, (byte) 0);
             }
         }
 
